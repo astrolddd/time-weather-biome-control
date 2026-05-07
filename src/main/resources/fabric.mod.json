@@ -1,0 +1,31 @@
+{
+	"schemaVersion": 1,
+	"id": "time-weather-biome-control",
+	"version": "${version}",
+	"name": "Time Weather Biome Control",
+	"description": "This is an example description! Tell everyone what your mod is about!",
+	"authors": [
+		"astrolddd"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "MIT",
+	"icon": "assets/time-weather-biome-control/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"client": [
+			"net.astrolddd.twbc.TimeWeatherBiomeControlMod"
+		]
+	},
+	"mixins": [
+		"time-weather-biome-control.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.2",
+		"minecraft": "~1.21.1",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
