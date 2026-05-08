@@ -16,10 +16,22 @@ import java.util.List;
 
 public final class AtmosphereScreen extends Screen {
     private static final int CONTROL_HEIGHT = 20;
-    private static final int PANEL_COLOR = 0xD8181D24;
-    private static final int PANEL_BORDER = 0x90707A86;
-    private static final int CARD_COLOR = 0xB80E131A;
-    private static final int TEXT_MUTED = 0xFFC4CAD3;
+    private static final int HEADER_HEIGHT = 46;
+    private static final int FOOTER_HEIGHT = 46;
+    private static final int CONTENT_PADDING_X = 18;
+    private static final int CONTENT_PADDING_Y = 14;
+
+    private static final int OVERLAY_TOP = 0x7A0B1420;
+    private static final int OVERLAY_BOTTOM = 0xB805070A;
+    private static final int PANEL_COLOR = 0xE0121620;
+    private static final int PANEL_BORDER = 0xA03D4652;
+    private static final int HEADER_COLOR = 0xF0161C28;
+    private static final int CARD_COLOR = 0xCC0E131A;
+    private static final int CARD_BORDER = 0x5A4C5663;
+    private static final int DIVIDER = 0x334C5663;
+
+    private static final int TEXT_MUTED = 0xFFB9C1CD;
+    private static final int TEXT_FAINT = 0xFF8B93A0;
     private static final int GREEN = 0xFF52D568;
     private static final int GOLD = 0xFFFFD45A;
     private static final int BLUE = 0xFFBFD9FF;
@@ -31,7 +43,7 @@ public final class AtmosphereScreen extends Screen {
     private int scrollOffset = 0;
 
     public AtmosphereScreen() {
-        super(Text.literal("Control Panel   "));
+        super(Text.literal("Atmosphere"));
     }
 
     @Override
@@ -63,15 +75,17 @@ public final class AtmosphereScreen extends Screen {
         int panelY = panelY();
         int panelWidth = panelWidth();
         int viewportHeight = viewportHeight();
-        int contentX = panelX + 18;
-        int contentWidth = panelWidth - 36;
-        int contentY = panelY - scrollOffset;
+        int scrollY = scrollY(panelY);
+        int scrollHeight = scrollHeight(viewportHeight);
+        int contentX = panelX + CONTENT_PADDING_X;
+        int contentWidth = panelWidth - CONTENT_PADDING_X * 2;
+        int contentY = scrollY + CONTENT_PADDING_Y - scrollOffset;
         scrollOffset = clamp(scrollOffset, 0, maxScroll());
 
-        addCloseButton();
-        addFooterButtons(panelX, panelWidth);
+        addHeaderButtons(panelX, panelY, panelWidth);
+        addFooterButtons(panelX, panelY, panelWidth);
 
-        int y = contentY + 48;
+        int y = contentY;
         if (visible(y, CONTROL_HEIGHT)) {
             TextFieldWidget searchField = new TextFieldWidget(textRenderer, contentX, y, contentWidth, CONTROL_HEIGHT, Text.literal("Search biomes"));
             searchField.setMaxLength(64);
@@ -89,7 +103,7 @@ public final class AtmosphereScreen extends Screen {
             addDrawableChild(searchField);
         }
 
-        y = contentY + 76;
+        y += 28;
         if (visible(y, CONTROL_HEIGHT)) {
             String selectedBiome = biomeIds.contains(TimeWeatherBiomeControlMod.STATE.biomeId())
                     ? TimeWeatherBiomeControlMod.STATE.biomeId()
@@ -103,20 +117,21 @@ public final class AtmosphereScreen extends Screen {
                     }));
         }
 
-        y = contentY + 164;
+        y += 82;
         if (visible(y, CONTROL_HEIGHT)) {
             addDrawableChild(new TimeSliderWidget(contentX, y, Math.max(100, contentWidth - 88), CONTROL_HEIGHT, TimeWeatherBiomeControlMod.STATE.targetTime()));
         }
 
-        y = contentY + 266;
+        y += 92;
         if (visible(y, CONTROL_HEIGHT)) {
-            int buttonWidth = Math.max(58, (contentWidth - 8) / 3);
-            addWeatherButton(contentX, y, buttonWidth, WeatherMode.CLEAR);
-            addWeatherButton(contentX + buttonWidth + 4, y, buttonWidth, WeatherMode.RAIN);
-            addWeatherButton(contentX + (buttonWidth + 4) * 2, y, contentWidth - (buttonWidth + 4) * 2, WeatherMode.THUNDER);
+            int buttonWidth = Math.max(58, (contentWidth - 12) / 4);
+            addWeatherButton(contentX, y, buttonWidth, WeatherMode.VANILLA);
+            addWeatherButton(contentX + buttonWidth + 4, y, buttonWidth, WeatherMode.CLEAR);
+            addWeatherButton(contentX + (buttonWidth + 4) * 2, y, buttonWidth, WeatherMode.RAIN);
+            addWeatherButton(contentX + (buttonWidth + 4) * 3, y, contentWidth - (buttonWidth + 4) * 3, WeatherMode.THUNDER);
         }
 
-        y = contentY + 354;
+        y += 74;
         if (visible(y, CONTROL_HEIGHT)) {
             addDrawableChild(ButtonWidget.builder(Text.literal(TimeWeatherBiomeControlMod.STATE.smoothTransitions() ? "On" : "Off"), button -> {
                 TimeWeatherBiomeControlMod.STATE.setSmoothTransitions(!TimeWeatherBiomeControlMod.STATE.smoothTransitions());
@@ -124,18 +139,18 @@ public final class AtmosphereScreen extends Screen {
             }).dimensions(contentX + contentWidth - 64, y, 64, CONTROL_HEIGHT).build());
         }
 
-        y = contentY + 428;
+        y += 74;
         if (visible(y, CONTROL_HEIGHT)) {
             addDrawableChild(new TransitionSpeedSliderWidget(contentX, y, Math.max(100, contentWidth - 88), CONTROL_HEIGHT, TimeWeatherBiomeControlMod.STATE.transitionSpeed()));
         }
 
-        y = contentY + 504;
-        if (visible(y, CONTROL_HEIGHT)) {
+        y += 76;
+        /*if (visible(y, CONTROL_HEIGHT)) {
             addDrawableChild(ButtonWidget.builder(Text.literal("Save Preset"), button -> {
                 TimeWeatherBiomeControlMod.STATE.saveCurrentPreset("Preset " + (TimeWeatherBiomeControlMod.STATE.presets().size() + 1));
                 clearAndInit();
             }).dimensions(contentX, y, contentWidth, CONTROL_HEIGHT).build());
-        }
+        }*/
 
         int presetY = contentY + presetStartOffset();
         for (AtmospherePreset preset : TimeWeatherBiomeControlMod.STATE.presets()) {
@@ -159,7 +174,7 @@ public final class AtmosphereScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        if (mouseX >= panelX() && mouseX <= panelX() + panelWidth() && mouseY >= panelY() && mouseY <= panelY() + viewportHeight()) {
+        if (isInScrollArea(mouseX, mouseY)) {
             int nextOffset = clamp(scrollOffset - (int) Math.round(verticalAmount * 34.0D), 0, maxScroll());
             if (nextOffset != scrollOffset) {
                 scrollOffset = nextOffset;
@@ -178,37 +193,37 @@ public final class AtmosphereScreen extends Screen {
         int panelY = panelY();
         int panelWidth = panelWidth();
         int viewportHeight = viewportHeight();
-        int contentX = panelX + 18;
-        int contentWidth = panelWidth - 36;
-        int contentY = panelY - scrollOffset;
+        int scrollY = scrollY(panelY);
+        int scrollHeight = scrollHeight(viewportHeight);
+        int contentX = panelX + CONTENT_PADDING_X;
+        int contentWidth = panelWidth - CONTENT_PADDING_X * 2;
+        int contentY = scrollY + CONTENT_PADDING_Y - scrollOffset;
 
         drawPanel(context, panelX, panelY, panelWidth, viewportHeight);
 
-        context.enableScissor(panelX + 1, panelY + 1, panelX + panelWidth - 1, panelY + viewportHeight - 1);
+        context.enableScissor(panelX + 1, scrollY + 1, panelX + panelWidth - 1, scrollY + scrollHeight - 1);
         drawCards(context, contentX, contentY, contentWidth);
         context.disableScissor();
 
         super.render(context, mouseX, mouseY, delta);
 
-        context.drawCenteredTextWithShadow(textRenderer, title, width / 2, titleY(), 0xFFFFFFFF);
-        context.drawCenteredTextWithShadow(textRenderer, Text.literal("Customize your sky, time, weather and biome."), width / 2, titleY() + 22, 0xFFE4E8EF);
+        drawHeader(context, panelX, panelY, panelWidth);
+        drawFooterNote(context);
 
-        context.enableScissor(panelX + 1, panelY + 1, panelX + panelWidth - 1, panelY + viewportHeight - 1);
+        context.enableScissor(panelX + 1, scrollY + 1, panelX + panelWidth - 1, scrollY + scrollHeight - 1);
         drawContentText(context, contentX, contentY, contentWidth);
         context.disableScissor();
 
-        drawScrollBar(context, panelX + panelWidth - 7, panelY, viewportHeight);
-        context.drawCenteredTextWithShadow(textRenderer, Text.literal("Client-side only. Changes do not affect the server."), width / 2, height - 14, 0xFF9AA1AA);
-        context.drawTextWithShadow(textRenderer, Text.literal("v1.0.0"), width - 44, height - 14, 0xFF9AA1AA);
+        drawScrollBar(context, panelX + panelWidth - 7, scrollY, scrollHeight);
     }
 
-    private void addCloseButton() {
+    private void addHeaderButtons(int panelX, int panelY, int panelWidth) {
         addDrawableChild(ButtonWidget.builder(Text.literal("X"), button -> close())
-                .dimensions(width - 36, 18, 22, 22).build());
+                .dimensions(panelX + panelWidth - 26, panelY + 12, 14, 14).build());
     }
 
-    private void addFooterButtons(int panelX, int panelWidth) {
-        int footerY = height - 38;
+    private void addFooterButtons(int panelX, int panelY, int panelWidth) {
+        int footerY = panelY + viewportHeight() - FOOTER_HEIGHT + 12;
         int buttonWidth = Math.min(116, (panelWidth - 10) / 2);
         int applyX = panelX + panelWidth - buttonWidth;
         int cancelX = applyX - buttonWidth - 8;
@@ -234,23 +249,25 @@ public final class AtmosphereScreen extends Screen {
     }
 
     private void drawBackdrop(DrawContext context) {
-        context.fillGradient(0, 0, width, height, 0x99141F30, 0xCC05070A);
-        context.fill(0, 0, width, Math.max(58, panelY() - 10), 0x661C3858);
-        context.fill(0, height - 46, width, height, 0xB0000000);
+        context.fillGradient(0, 0, width, height, OVERLAY_TOP, OVERLAY_BOTTOM);
     }
 
     private void drawPanel(DrawContext context, int x, int y, int panelWidth, int panelHeight) {
         context.fill(x, y, x + panelWidth, y + panelHeight, PANEL_COLOR);
         context.drawBorder(x, y, panelWidth, panelHeight, PANEL_BORDER);
+        context.fill(x + 1, y + 1, x + panelWidth - 1, y + HEADER_HEIGHT, HEADER_COLOR);
+        context.fill(x + 1, y + panelHeight - FOOTER_HEIGHT, x + panelWidth - 1, y + panelHeight - 1, HEADER_COLOR);
+        context.fill(x + 1, y + HEADER_HEIGHT, x + panelWidth - 1, y + HEADER_HEIGHT + 1, DIVIDER);
+        context.fill(x + 1, y + panelHeight - FOOTER_HEIGHT - 1, x + panelWidth - 1, y + panelHeight - FOOTER_HEIGHT, DIVIDER);
     }
 
     private void drawCards(DrawContext context, int x, int y, int contentWidth) {
-        drawCard(context, x, y + 16, contentWidth, 112);
-        drawCard(context, x, y + 142, contentWidth, 100);
-        drawCard(context, x, y + 254, contentWidth, 70);
-        drawCard(context, x, y + 340, contentWidth, 58);
-        drawCard(context, x, y + 414, contentWidth, 76);
-        drawCard(context, x, y + 528, contentWidth, presetContentHeight());
+        drawCard(context, x, y - 8, contentWidth, 78);
+        drawCard(context, x, y + 84, contentWidth, 96);
+        drawCard(context, x, y + 196, contentWidth, 66);
+        drawCard(context, x, y + 276, contentWidth, 72);
+        drawCard(context, x, y + 362, contentWidth, 70);
+        drawCard(context, x, y + 446, contentWidth, presetContentHeight());
 
         int presetY = y + presetStartOffset();
         for (AtmospherePreset preset : TimeWeatherBiomeControlMod.STATE.presets()) {
@@ -261,35 +278,33 @@ public final class AtmosphereScreen extends Screen {
 
     private void drawCard(DrawContext context, int x, int y, int cardWidth, int cardHeight) {
         context.fill(x, y, x + cardWidth, y + cardHeight, CARD_COLOR);
-        context.drawBorder(x, y, cardWidth, cardHeight, 0x554C5663);
+        context.drawBorder(x, y, cardWidth, cardHeight, CARD_BORDER);
     }
 
     private void drawContentText(DrawContext context, int x, int y, int contentWidth) {
-        context.drawTextWithShadow(textRenderer, Text.literal("Biome"), x + 12, y + 26, GREEN);
-        context.drawTextWithShadow(textRenderer, Text.literal("Filter the list, then choose the fake biome."), x + 12, y + 106, TEXT_MUTED);
+        context.drawTextWithShadow(textRenderer, Text.literal("Biome"), x + 12, y + 4, GREEN);
+        context.drawTextWithShadow(textRenderer, Text.literal("Filter then choose a client-only biome."), x + 12, y + 54, TEXT_MUTED);
 
-        context.drawTextWithShadow(textRenderer, Text.literal("Time of Day"), x + 12, y + 148, GOLD);
-        drawValueBox(context, x + contentWidth - 82, y + 164, 70, CONTROL_HEIGHT, String.valueOf(TimeWeatherBiomeControlMod.STATE.targetTime()));
-        context.drawTextWithShadow(textRenderer, Text.literal("0"), x + 12, y + 190, TEXT_MUTED);
-        context.drawCenteredTextWithShadow(textRenderer, Text.literal(timePhaseLabel(TimeWeatherBiomeControlMod.STATE.targetTime())), x + contentWidth / 2, y + 190, TEXT_MUTED);
-        context.drawTextWithShadow(textRenderer, Text.literal("24000"), x + contentWidth - 54, y + 190, TEXT_MUTED);
-        context.drawTextWithShadow(textRenderer, Text.literal("Controls lighting and sky angle."), x + 12, y + 216, TEXT_MUTED);
+        context.drawTextWithShadow(textRenderer, Text.literal("Time"), x + 12, y + 96, GOLD);
+        drawValueBox(context, x + contentWidth - 82, y + 112, 70, CONTROL_HEIGHT, String.valueOf(TimeWeatherBiomeControlMod.STATE.targetTime()));
+        context.drawTextWithShadow(textRenderer, Text.literal("0"), x + 12, y + 138, TEXT_FAINT);
+        context.drawCenteredTextWithShadow(textRenderer, Text.literal(timePhaseLabel(TimeWeatherBiomeControlMod.STATE.targetTime())), x + contentWidth / 2, y + 138, TEXT_MUTED);
+        context.drawTextWithShadow(textRenderer, Text.literal("24000"), x + contentWidth - 54, y + 138, TEXT_FAINT);
+        context.drawTextWithShadow(textRenderer, Text.literal("Lighting and sky angle."), x + 12, y + 160, TEXT_MUTED);
 
-        context.drawTextWithShadow(textRenderer, Text.literal("Weather"), x + 12, y + 256, BLUE);
-        context.drawTextWithShadow(textRenderer, Text.literal("Rain, clouds, thunder, and shader weather values."), x + 12, y + 298, TEXT_MUTED);
+        context.drawTextWithShadow(textRenderer, Text.literal("Weather"), x + 12, y + 208, BLUE);
+        context.drawTextWithShadow(textRenderer, Text.literal("Visual rain/thunder (client-side)."), x + 12, y + 248, TEXT_MUTED);
 
-        context.drawTextWithShadow(textRenderer, Text.literal("Smooth Transitions"), x + 12, y + 356, PURPLE);
-        context.fill(x + contentWidth - 64, y + 354, x + contentWidth, y + 374, TimeWeatherBiomeControlMod.STATE.smoothTransitions() ? GREEN : 0xFF5D636B);
-        context.drawTextWithShadow(textRenderer, Text.literal("Blend between settings instead of snapping."), x + 12, y + 380, TEXT_MUTED);
+        context.drawTextWithShadow(textRenderer, Text.literal("Transitions"), x + 12, y + 288, PURPLE);
+        context.fill(x + contentWidth - 64, y + 286, x + contentWidth, y + 306, TimeWeatherBiomeControlMod.STATE.smoothTransitions() ? GREEN : 0xFF5D636B);
+        context.drawTextWithShadow(textRenderer, Text.literal("Smooth blending instead of snapping."), x + 12, y + 312, TEXT_MUTED);
 
-        context.drawTextWithShadow(textRenderer, Text.literal("Transition Speed"), x + 12, y + 420, 0xFFE6E6E6);
-        drawValueBox(context, x + contentWidth - 82, y + 428, 70, CONTROL_HEIGHT, String.format("%.2fx", TimeWeatherBiomeControlMod.STATE.transitionSpeed()));
-        context.drawTextWithShadow(textRenderer, Text.literal("Lower values transition more slowly."), x + 12, y + 458, TEXT_MUTED);
+        context.drawTextWithShadow(textRenderer, Text.literal("Speed"), x + 12, y + 372, 0xFFE6E6E6);
+        drawValueBox(context, x + contentWidth - 82, y + 378, 70, CONTROL_HEIGHT, String.format("%.2fx", TimeWeatherBiomeControlMod.STATE.transitionSpeed()));
+        context.drawTextWithShadow(textRenderer, Text.literal("Lower values change more slowly."), x + 12, y + 404, TEXT_MUTED);
 
-        context.drawTextWithShadow(textRenderer, Text.literal("Actions"), x + 12, y + 500, 0xFFE6E6E6);
-        context.drawTextWithShadow(textRenderer, Text.literal("Save the current look as a preset."), x + 12, y + 528, TEXT_MUTED);
-
-        context.drawTextWithShadow(textRenderer, Text.literal("Presets"), x + 12, y + 542, GOLD);
+        context.drawTextWithShadow(textRenderer, Text.literal("Presets"), x + 12, y + 456, GOLD);
+        context.drawTextWithShadow(textRenderer, Text.literal("Save the current look, then reuse it anytime."), x + 12, y + 480, TEXT_MUTED);
         int presetY = y + presetStartOffset();
         for (AtmospherePreset preset : TimeWeatherBiomeControlMod.STATE.presets()) {
             drawPresetText(context, x + 22, presetY, contentWidth - 44, preset);
@@ -358,15 +373,14 @@ public final class AtmosphereScreen extends Screen {
     }
 
     private boolean visible(int y, int widgetHeight) {
-        return y + widgetHeight >= panelY() + 2 && y <= panelY() + viewportHeight() - 2;
-    }
-
-    private int titleY() {
-        return height < 300 ? 14 : 24;
+        int py = panelY();
+        int scrollTop = scrollY(py);
+        int scrollBottom = scrollTop + scrollHeight(viewportHeight());
+        return y + widgetHeight >= scrollTop + 2 && y <= scrollBottom - 2;
     }
 
     private int panelY() {
-        return height < 300 ? 58 : 74;
+        return clamp((height - 310) / 2, 26, 74);
     }
 
     private int panelWidth() {
@@ -378,19 +392,19 @@ public final class AtmosphereScreen extends Screen {
     }
 
     private int viewportHeight() {
-        return Math.max(130, height - panelY() - 58);
+        return clamp(height - panelY() - 24, 190, height - 24);
     }
 
     private int presetStartOffset() {
-        return 570;
+        return 512;
     }
 
     private int presetContentHeight() {
-        return 54 + TimeWeatherBiomeControlMod.STATE.presets().size() * 58 + 48;
+        return 64 + TimeWeatherBiomeControlMod.STATE.presets().size() * 58 + 44;
     }
 
     private int contentHeight() {
-        return presetStartOffset() + TimeWeatherBiomeControlMod.STATE.presets().size() * 58 + 48;
+        return presetStartOffset() + TimeWeatherBiomeControlMod.STATE.presets().size() * 58 + 56;
     }
 
     private int maxScroll() {
@@ -416,12 +430,7 @@ public final class AtmosphereScreen extends Screen {
     }
 
     private static String weatherLabel(WeatherMode mode) {
-        return switch (mode) {
-            case VANILLA -> "Vanilla";
-            case CLEAR -> "Clear";
-            case RAIN -> "Rain";
-            case THUNDER -> "Thunder";
-        };
+        return mode.label();
     }
 
     private static String timePhaseLabel(long time) {
@@ -439,6 +448,35 @@ public final class AtmosphereScreen extends Screen {
 
     private static int clamp(int value, int min, int max) {
         return Math.max(min, Math.min(max, value));
+    }
+
+    private int scrollY(int panelY) {
+        return panelY + HEADER_HEIGHT;
+    }
+
+    private int scrollHeight(int viewportHeight) {
+        return Math.max(60, viewportHeight - HEADER_HEIGHT - FOOTER_HEIGHT);
+    }
+
+    private boolean isInScrollArea(double mouseX, double mouseY) {
+        int px = panelX();
+        int py = panelY();
+        int vw = panelWidth();
+        int vh = viewportHeight();
+        int sy = scrollY(py);
+        int sh = scrollHeight(vh);
+        return mouseX >= px && mouseX <= px + vw && mouseY >= sy && mouseY <= sy + sh;
+    }
+
+    private void drawHeader(DrawContext context, int panelX, int panelY, int panelWidth) {
+        int titleY = panelY + 14;
+        context.drawTextWithShadow(textRenderer, title, panelX + 14, titleY, 0xFFFFFFFF);
+        context.drawTextWithShadow(textRenderer, Text.literal("Client-side time \u2022 weather \u2022 biome"), panelX + 14, titleY + 14, TEXT_MUTED);
+    }
+
+    private void drawFooterNote(DrawContext context) {
+        context.drawCenteredTextWithShadow(textRenderer, Text.literal("Client-side only. Changes do not affect the server."), width / 2, height - 14, TEXT_FAINT);
+        context.drawTextWithShadow(textRenderer, Text.literal("v1.0.0"), width - 44, height - 14, TEXT_FAINT);
     }
 }
 
